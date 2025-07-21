@@ -31,7 +31,7 @@ class Net(nn.Module):
         x = self.linear(out)
         return x
 
-lr = 1e-2
+lr = 1e-3
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 net = Net(num_h=64).to(device)
 criterion = nn.CrossEntropyLoss()
@@ -50,18 +50,20 @@ for i in range (EPOCHS):
 
     outputs = net(inputs)
 
-    loss = criterion(outputs.view(-1, act_size), labels) # X object has no atribute Y
+    loss = criterion(outputs.view(-1, act_size), labels)
     loss.backward()
     optimizer.step()
 
     count += 1
     
     running_loss += loss.item()
+    loss_list.append(loss.data)
+    iteration_list.append(count)
+    
     if count % 100 == 0: #every 100
         print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
         running_loss = 0.0
-        loss_list.append(loss.data)
-        iteration_list.append(count)
+        
 
 print('Finished Training')
 plt.plot(iteration_list, loss_list)
