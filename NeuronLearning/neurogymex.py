@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 import neurogym as ngym
 import numpy as np
 import torch 
@@ -35,7 +37,9 @@ net = Net(num_h=64).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(net.parameters(), lr)
 
-
+loss_list = []
+iteration_list = []
+count = 0
 running_loss = 0.0
 for i in range (EPOCHS):
     inputs, labels = dataset()
@@ -50,12 +54,20 @@ for i in range (EPOCHS):
     loss.backward()
     optimizer.step()
 
+    count += 1
+    
     running_loss += loss.item()
-    if (i+1) % 100 == 0: #every 100
+    if count % 100 == 0: #every 100
         print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
         running_loss = 0.0
+        loss_list.append(loss.data)
+        iteration_list.append(count)
 
 print('Finished Training')
+plt.plot(iteration_list, loss_list)
+plt.xlabel("Iteration")
+plt.ylabel("Loss")
+plt.show()
 
 perf = 0
 num_trial = 200
