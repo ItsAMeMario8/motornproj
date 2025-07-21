@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 import neurogym as ngym
 
@@ -52,19 +53,18 @@ optimizer = torch.optim.Adam(model.parameters(), lr)
 
 loss_list = []
 iteration_list = []
-accuracy_list = []
 count = 0
 running_loss = 0.0
 for i in range (EPOCHS):
     inputs, labels = dataset()
     inputs = torch.from_numpy(inputs).type(torch.float).to(device)
     labels = torch.from_numpy(labels.flatten()).type(torch.long).to(device)
-
+    
     optimizer.zero_grad()
 
     outputs = model(inputs)
 
-    loss = criterion(outputs.view(-1, act_size), labels) # X object has no atribute Y
+    loss = criterion(outputs.view(-1, act_size), labels)
     loss.backward()
     optimizer.step()
 
@@ -85,25 +85,16 @@ for i in range (EPOCHS):
                 
                 # Forward propagation
                 outputs = model(inputs)
-                
+
                 # Get predictions from the maximum value
                 predicted = torch.max(outputs.data, 1)[1]
                 
-                # Total number of labels
-                #total += labels.size(0)
-                
-                correct += (predicted == labels).sum()
-            
-            accuracy = 100 * correct / float(total)
-            
             # store loss and iteration
-            loss_list.append(loss.data)
+            loss_list.append(running_loss.data)
             iteration_list.append(count)
-            accuracy_list.append(accuracy)
         
             if (i+1) % 100 == 0: #every 100
-                print('Iteration: {}  Loss: {}  Accuracy: {} %'.format(count, loss.data, accuracy))
-                #print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
+                print('{:d} loss: {:0.5f}'.format(count, running_loss / 100))
 
 print('Finished Training')
 
@@ -112,5 +103,5 @@ print('Finished Training')
 plt.plot(iteration_list,loss_list)
 plt.xlabel("Number of iteration")
 plt.ylabel("Loss")
-plt.title("RNN: Loss vs Number of iteration")
+plt.title("Loss vs Iteration")
 plt.show()
