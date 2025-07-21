@@ -93,7 +93,7 @@ for i in range (EPOCHS):
             loss_list.append(running_loss.data)
             iteration_list.append(count)
         
-            if (i+1) % 100 == 0: #every 100
+            if (count) % 100 == 0: #every 100
                 print('{:d} loss: {:0.5f}'.format(count, running_loss / 100))
 
 print('Finished Training')
