@@ -23,11 +23,11 @@ EPOCHS = 2000
 class RNNModel(nn.Module):
     def __init__(self, hidden_dim):
         super(RNNModel, self).__init__()
-        self.rnn = nn.RNN(ob_size, hidden_dim)
+        self.lstm = nn.LSTM(ob_size, hidden_dim)
         self.linear = nn.Linear(hidden_dim, act_size)
     
     def forward(self, x):
-        out, hidden = self.rnn(x)
+        out, hidden = self.lstm(x)
         out = self.linear(out) 
         return out
 
@@ -61,8 +61,9 @@ for i in range (EPOCHS):
 
     loss_list.append(loss.data)
     iteration_list.append(count)
-    if (i+1) % 100 == 0:     
+    if count % 100 == 0:     
         print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
+        running_loss = 0.0
 
 print('Finished Training')
 
