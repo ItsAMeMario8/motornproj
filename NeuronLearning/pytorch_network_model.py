@@ -74,7 +74,7 @@ for i in range (EPOCHS):
     
     running_loss += loss.item()
         
-    if (i+1) % 250 == 0: 
+    if (i+1) % 100 == 0: 
         correct = 0
         total = 0
         # store loss and iteration
