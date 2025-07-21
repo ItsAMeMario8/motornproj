@@ -31,6 +31,8 @@ env = dataset.env
 ob_size = env.observation_space.shape[0]
 act_size = env.action_space.n
 
+print(ob_size)
+
 EPOCHS = 2000
 
 class RNNModel(nn.Module):
@@ -59,42 +61,27 @@ for i in range (EPOCHS):
     inputs, labels = dataset()
     inputs = torch.from_numpy(inputs).type(torch.float).to(device)
     labels = torch.from_numpy(labels.flatten()).type(torch.long).to(device)
-    
+        
     optimizer.zero_grad()
-
+    
     outputs = model(inputs)
-
+    
     loss = criterion(outputs.view(-1, act_size), labels)
     loss.backward()
     optimizer.step()
-
+    
     count += 1
-
+    
     running_loss += loss.item()
-
-    if count % 250 == 0:
-            # Calculate Accuracy         
-            correct = 0
-            total = 0
-            # Iterate through test dataset
-            for inputs, labels in dataset:
-                env.new_trial()
-                ob, gt = env.ob, env.gt
-                ob = ob[:, np.newaxis, :]
-                inputs = torch.from_numpy(ob).type(torch.float).to(device)
-                
-                # Forward propagation
-                outputs = model(inputs)
-
-                # Get predictions from the maximum value
-                predicted = torch.max(outputs.data, 1)[1]
-                
-            # store loss and iteration
-            loss_list.append(running_loss.data)
-            iteration_list.append(count)
         
-            if (count) % 100 == 0: #every 100
-                print('{:d} loss: {:0.5f}'.format(count, running_loss / 100))
+    if (i+1) % 250 == 0: 
+        correct = 0
+        total = 0
+        # store loss and iteration
+        loss_list.append(loss.data)
+        iteration_list.append(count)
+        #if (i+1) % 100 == 0: #every 100
+        print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
 
 print('Finished Training')
 
