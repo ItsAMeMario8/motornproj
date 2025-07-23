@@ -75,9 +75,9 @@ for i in range (config['EPOCHS']):
         
     optimizer.zero_grad()
     
-    outputs, _ = model(inputs)
+    outputs = model(inputs)
     
-    loss = criterion(outputs.view(-1, act_size), labels)
+    loss = criterion(outputs.view(-1, output_dim), labels)
     loss.backward()
     optimizer.step()
     
@@ -126,9 +126,9 @@ env.reset()
 #Finding average of trials and collecting data 
 
 with torch.no_grad():
-    model = RNNModel(input_size=input_size,
+    model = RNNModel(input_dim=input_dim,
                     hidden_dim=config['hidden_dim'],
-                    output_size=env.action_space.n).to(device)
+                    output_dim=env.action_space.n).to(device)
     model.load_state_dict(torch.load(modelpath / 'model.pth'))
 
     perf = 0
