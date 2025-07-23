@@ -25,21 +25,21 @@ def get_modelpath(task):
     return path
 
 class RNNModel(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim):
+    def __init__(self, input_dim, hidden_layer, output_dim):
         super(RNNModel, self).__init__()
-        # LSTM, RNN or Transformer -> try this
-        self.lstm = nn.LSTM(input_dim, hidden_dim)
-        self.linear = nn.Linear(hidden_dim, output_dim)
+        # LSTM & RNN compare for paper
+        self.gru = nn.GRU(input_dim, hidden_layer)
+        self.linear = nn.Linear(hidden_layer, output_dim)
     
     def forward(self, x):
-        out, hn = self.lstm(x)
+        out, hn = self.gru(x)
         v = self.linear(out) 
         return v, out
 
 modelpath = get_modelpath(task)
 config = {
     'dt': 100,
-    'hidden_dim':64,
+    'hidden_layer':64,
     'lr': 1e-3,
     'batch_size': 16,
     'seq_len': 100,
@@ -57,7 +57,7 @@ input_dim = env.observation_space.shape[0]
 output_dim = env.action_space.n
 
 model = RNNModel(input_dim=input_dim, 
-                 hidden_dim=64, 
+                 hidden_layer=64, 
                  output_dim=output_dim).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
@@ -87,7 +87,7 @@ for i in range (config['EPOCHS']):
     iteration_list.append(count)
     running_loss += loss.item()
     if count % 100 == 0:     
-        #print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
+        print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
         running_loss = 0.0
         torch.save(model.state_dict(), modelpath / 'model.pth')
 
@@ -127,7 +127,7 @@ env.reset()
 
 with torch.no_grad():
     model = RNNModel(input_dim=input_dim,
-                    hidden_dim=config['hidden_dim'],
+                    hidden_layer=config['hidden_layer'],
                     output_dim=env.action_space.n).to(device)
     model.load_state_dict(torch.load(modelpath / 'model.pth'))
 
