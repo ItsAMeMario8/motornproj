@@ -166,7 +166,7 @@ activity = np.array((torch.tensor(padded_tensors)).numpy())
 
 def analysis_average_activity(activity, info, config):
     #Load and preprocess results
-    plt.figure(figsize=(1.2, 0.8))
+    plt.savefig('loaded_results')
     t_plot = np.arange(activity.shape[1]) * config['dt']
     plt.plot(t_plot, activity.mean(axis=0).mean(axis=-1))
 
@@ -200,7 +200,6 @@ def analysis_activity_by_condition(activity, info, config):
         plt.legend(title=condition, loc='center left', bbox_to_anchor=(1.0, 0.5))
 
 analysis_activity_by_condition(activity, info, config)
-
 
 plt.show()
 
