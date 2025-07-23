@@ -25,15 +25,16 @@ def get_modelpath(task):
     return path
 
 class RNNModel(nn.Module):
-    def __init__(self, input_size, hidden_dim, output_size):
+    def __init__(self, input_dim, hidden_dim, output_dim):
         super(RNNModel, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_dim)
-        self.linear = nn.Linear(hidden_dim, output_size)
+        # LSTM, RNN or Transformer -> try this
+        self.lstm = nn.LSTM(input_dim, hidden_dim)
+        self.linear = nn.Linear(hidden_dim, output_dim)
     
     def forward(self, x):
         out, hidden = self.lstm(x)
-        x = self.linear(out) 
-        return x, out
+        out = self.linear(out) 
+        return out
 
 modelpath = get_modelpath(task)
 config = {
@@ -52,12 +53,12 @@ with open(modelpath / 'config.json', 'w') as f:
 
 dataset = ngym.Dataset(task, env_kwargs=env_kwargs, batch_size=config['batch_size'], seq_len=100)
 env = dataset.env
-input_size = env.observation_space.shape[0]
-act_size = env.action_space.n
+input_dim = env.observation_space.shape[0]
+output_dim = env.action_space.n
 
-model = RNNModel(input_size=input_size, 
+model = RNNModel(input_dim=input_dim, 
                  hidden_dim=64, 
-                 output_size=act_size).to(device)
+                 output_dim=output_dim).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
 
