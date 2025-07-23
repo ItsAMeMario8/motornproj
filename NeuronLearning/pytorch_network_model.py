@@ -1,6 +1,10 @@
+import os
+import json
 import numpy as np
 import pandas as pd
+from pathlib import Path
 import matplotlib.pyplot as plt
+import gym
 import neurogym as ngym
 import torch
 import torch.nn as nn
@@ -10,67 +14,168 @@ clear_output()
 warnings.filterwarnings('ignore')
 
 task = 'MotorTiming-v0'
-kwargs = {'dt': 100}
-seq_len = 100
 
-dataset = ngym.Dataset(task, env_kwargs=kwargs, batch_size=16, seq_len=seq_len)
-env = dataset.env
-ob_size = env.observation_space.shape[0]
-act_size = env.action_space.n
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-EPOCHS = 2000
+def get_modelpath(task):
+    path = Path('/home/emily/motornproj/NeuronLearning') / 'files'
+    os.makedirs(path, exist_ok=True)
+    path = path / task
+    os.makedirs(path, exist_ok=True)
+    return path
 
 class RNNModel(nn.Module):
-    def __init__(self, hidden_dim):
+    def __init__(self, input_size, hidden_dim, output_size):
         super(RNNModel, self).__init__()
-        self.lstm = nn.LSTM(ob_size, hidden_dim)
-        self.linear = nn.Linear(hidden_dim, act_size)
+        self.lstm = nn.LSTM(input_size, hidden_dim)
+        self.linear = nn.Linear(hidden_dim, output_size)
     
     def forward(self, x):
         out, hidden = self.lstm(x)
-        out = self.linear(out) 
-        return out
+        x = self.linear(out) 
+        return x, out
 
-lr = 1e-3
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model = RNNModel(hidden_dim=64).to(device)
+modelpath = get_modelpath(task)
+config = {
+    'dt': 100,
+    'hidden_dim':64,
+    'lr': 1e-3,
+    'batch_size': 16,
+    'seq_len': 100,
+    'EPOCHS': 2000,
+}
+
+env_kwargs = {'dt': config['dt']}
+config['env_kwargs'] = env_kwargs
+with open(modelpath / 'config.json', 'w') as f:
+    json.dump(config, f)
+
+dataset = ngym.Dataset(task, env_kwargs=env_kwargs, batch_size=config['batch_size'], seq_len=100)
+env = dataset.env
+input_size = env.observation_space.shape[0]
+act_size = env.action_space.n
+
+model = RNNModel(input_size=input_size, 
+                 hidden_dim=64, 
+                 output_size=act_size).to(device)
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr)
+optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
+
+print('Training Task ', task)
 
 loss_list = []
 iteration_list = []
 count = 0
 running_loss = 0.0
-for i in range (EPOCHS):
+for i in range (config['EPOCHS']):
     inputs, labels = dataset()
     inputs = torch.from_numpy(inputs).type(torch.float).to(device)
     labels = torch.from_numpy(labels.flatten()).type(torch.long).to(device)
         
     optimizer.zero_grad()
     
-    outputs = model(inputs)
+    outputs, _ = model(inputs)
     
     loss = criterion(outputs.view(-1, act_size), labels)
     loss.backward()
     optimizer.step()
     
     
-    running_loss += loss.item()
-
     count += 1
-
     loss_list.append(loss.data)
     iteration_list.append(count)
+    running_loss += loss.item()
     if count % 100 == 0:     
-        print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
+        #print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
         running_loss = 0.0
+        torch.save(model.state_dict(), modelpath / 'model.pth')
 
 print('Finished Training')
 
 # visualization loss 
+'''
 plt.plot(iteration_list,loss_list)
 plt.xlabel("Iteration")
 plt.ylabel("Loss")
 plt.title("Loss")
 plt.savefig('network_model_graph.png')
 plt.show()
+'''
+def infer_test_timing(env):
+    timing = {}
+    for period in env.timing.keys():
+        period_times = [env.sample_time(period) for _ in range(100)]
+        timing[period] = np.median(period_times)
+    return timing
+
+# Run network for analysis
+
+modelpath = get_modelpath(task)
+with open(modelpath / 'config.json') as f:
+    config = json.load(f)
+
+env_kwargs = config['env_kwargs']
+
+#Get info
+#Env
+env = ngym.make(task, **env_kwargs)
+env.timing = infer_test_timing(env)
+env.reset()
+
+#Finding average of trials and collecting data 
+
+with torch.no_grad():
+    model = RNNModel(input_size=input_size,
+                    hidden_dim=config['hidden_dim'],
+                    output_size=env.action_space.n).to(device)
+    model.load_state_dict(torch.load(modelpath / 'model.pth'))
+
+    perf = 0
+    num_trial = 100
+    
+    activity = list()
+    info = pd.DataFrame({
+        'correct': [],
+        'choice' : []
+    })
+    
+    for i in range(num_trial):
+        env.new_trial()
+        ob, gt = env.ob, env.gt
+        inputs = torch.from_numpy(ob[:, np.newaxis, :]).type(torch.float)
+        action_pred, hidden = model(inputs)
+
+        action_pred = action_pred.detach().numpy()
+        choice = np.argmax(action_pred[-1, 0, :])
+        correct = choice == gt[-1]    
+
+        trial_info = env.trial
+        trial_info.update({'correct': correct, 'choice': choice})
+        info.loc[len(info)] = trial_info
+        #info = pd.concat([info, trial_info], ignore_index=True)
+        
+        activity.append(np.array(hidden)[:, 0, :])
+ 
+    print('Average score : ', np.mean(info['correct']))
+
+activity = np.array(activity[:, 0, :].slice())
+
+
+#General analysis
+
+def analysis_average_activity(activity, info, config):
+    #Load and preprocess results
+    plt.figure(figsize=(1.2, 0.8))
+    t_plot = np.arange(activity.shape[1]) * config['dt']
+    plt.plot(t_plot, activity.mean(axis=0).mean(axis=-1))
+
+analysis_average_activity(activity, info, config)
+
+
+        
+
+
+
+
+
+
