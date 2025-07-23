@@ -93,14 +93,14 @@ for i in range (config['EPOCHS']):
 print('Finished Training')
 
 # visualization loss 
-'''
+
 plt.plot(iteration_list,loss_list)
 plt.xlabel("Iteration")
 plt.ylabel("Loss")
 plt.title("Loss")
 plt.savefig('network_model_graph.png')
 plt.show()
-'''
+
 def infer_test_timing(env):
     timing = {}
     for period in env.timing.keys():
@@ -157,9 +157,10 @@ with torch.no_grad():
         activity.append(np.array(hidden)[:, 0, :])
  
     print('Average score : ', np.mean(info['correct']))
-
-activity = np.array(activity[:, 0, :].slice())
-
+tensors = [torch.tensor(seq) for seq in activity]
+# pad because of sequence lengths
+padded_tensors = torch.nn.utils.rnn.pad_sequence(tensors, batch_first=True, padding_value=0)
+activity = np.array((torch.tensor(padded_tensors)).numpy())
 
 #General analysis
 
@@ -170,6 +171,38 @@ def analysis_average_activity(activity, info, config):
     plt.plot(t_plot, activity.mean(axis=0).mean(axis=-1))
 
 analysis_average_activity(activity, info, config)
+
+def get_conditions(info):
+    """Get a list of task conditions to plot."""
+    conditions = info.columns
+    # This condition's unique value should be less than 5
+    new_conditions = list()
+    for c in conditions:
+        try:
+            n_cond = len(pd.unique(info[c]))
+            print(n_cond)
+            if 1 < n_cond < 5:
+                new_conditions.append(c)
+        except TypeError:
+            pass
+        
+    return new_conditions
+
+def analysis_activity_by_condition(activity, info, config):
+    conditions = get_conditions(info)
+    for condition in conditions:
+        values = pd.unique(info[condition])
+        plt.figure(figsize=(1.2, 0.8))
+        t_plot = np.arange(activity.shape[1]) * config['dt']
+        for value in values:
+            a = activity[info[condition] == value]
+            plt.plot(t_plot, a.mean(axis=0).mean(axis=-1), label=str(value))
+        plt.legend(title=condition, loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+analysis_activity_by_condition(activity, info, config)
+
+
+plt.show()
 
 
         
