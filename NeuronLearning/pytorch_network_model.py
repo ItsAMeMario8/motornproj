@@ -32,9 +32,9 @@ class RNNModel(nn.Module):
         self.linear = nn.Linear(hidden_dim, output_dim)
     
     def forward(self, x):
-        out, hidden = self.lstm(x)
-        out = self.linear(out) 
-        return out
+        out, hn = self.lstm(x)
+        v = self.linear(out) 
+        return v, out
 
 modelpath = get_modelpath(task)
 config = {
@@ -75,7 +75,7 @@ for i in range (config['EPOCHS']):
         
     optimizer.zero_grad()
     
-    outputs = model(inputs)
+    outputs, _ = model(inputs)
     
     loss = criterion(outputs.view(-1, output_dim), labels)
     loss.backward()
@@ -172,35 +172,6 @@ def analysis_average_activity(activity, info, config):
     plt.plot(t_plot, activity.mean(axis=0).mean(axis=-1))
 
 analysis_average_activity(activity, info, config)
-
-def get_conditions(info):
-    """Get a list of task conditions to plot."""
-    conditions = info.columns
-    # This condition's unique value should be less than 5
-    new_conditions = list()
-    for c in conditions:
-        try:
-            n_cond = len(pd.unique(info[c]))
-            print(n_cond)
-            if 1 < n_cond < 5:
-                new_conditions.append(c)
-        except TypeError:
-            pass
-        
-    return new_conditions
-
-def analysis_activity_by_condition(activity, info, config):
-    conditions = get_conditions(info)
-    for condition in conditions:
-        values = pd.unique(info[condition])
-        plt.figure(figsize=(1.2, 0.8))
-        t_plot = np.arange(activity.shape[1]) * config['dt']
-        for value in values:
-            a = activity[info[condition] == value]
-            plt.plot(t_plot, a.mean(axis=0).mean(axis=-1), label=str(value))
-        plt.legend(title=condition, loc='center left', bbox_to_anchor=(1.0, 0.5))
-
-analysis_activity_by_condition(activity, info, config)
 
 plt.show()
 
