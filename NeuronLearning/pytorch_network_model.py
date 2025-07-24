@@ -9,6 +9,7 @@ import neurogym as ngym
 import torch
 import torch.nn as nn
 import warnings
+from collections import OrderedDict
 from IPython.display import clear_output
 clear_output()
 warnings.filterwarnings('ignore')
@@ -25,14 +26,15 @@ def get_modelpath(task):
     return path
 
 class RNNModel(nn.Module):
-    def __init__(self, input_dim, hidden_layer, output_dim):
+    def __init__(self, input_dim, hidden_layer, hl_dim, output_dim):
         super(RNNModel, self).__init__()
+        self.hl_dim = hl_dim
         # LSTM & RNN compare for paper
-        self.gru = nn.GRU(input_dim, hidden_layer)
+        self.lstm = nn.LSTM(input_dim, hidden_layer, hl_dim, batch_first=True)
         self.linear = nn.Linear(hidden_layer, output_dim)
     
     def forward(self, x):
-        out, hn = self.gru(x)
+        out, hn = self.lstm(x)
         v = self.linear(out) 
         return v, out
 
@@ -44,8 +46,10 @@ config = {
     'batch_size': 16,
     'seq_len': 100,
     'EPOCHS': 2000,
+    'hl_dim' : 5, #hidden layer dimention
 }
 
+hidden_layer = config['hidden_layer']
 env_kwargs = {'dt': config['dt']}
 config['env_kwargs'] = env_kwargs
 with open(modelpath / 'config.json', 'w') as f:
@@ -57,8 +61,11 @@ input_dim = env.observation_space.shape[0]
 output_dim = env.action_space.n
 
 model = RNNModel(input_dim=input_dim, 
-                 hidden_layer=64, 
-                 output_dim=output_dim).to(device)
+                 hidden_layer=config['hidden_layer'],
+                 hl_dim=config['hl_dim'],
+                 output_dim=output_dim,
+                 )
+model = model.to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
 
@@ -128,6 +135,7 @@ env.reset()
 with torch.no_grad():
     model = RNNModel(input_dim=input_dim,
                     hidden_layer=config['hidden_layer'],
+                    hl_dim=config['hl_dim'],
                     output_dim=env.action_space.n).to(device)
     model.load_state_dict(torch.load(modelpath / 'model.pth'))
 
@@ -168,10 +176,25 @@ activity = np.array((torch.tensor(padded_tensors)).numpy())
 def analysis_average_activity(activity, info, config):
     #Load and preprocess results
     plt.savefig('loaded_results')
+    plt.title('Activity of RNN')
     t_plot = np.arange(activity.shape[1]) * config['dt']
     plt.plot(t_plot, activity.mean(axis=0).mean(axis=-1))
 
 analysis_average_activity(activity, info, config)
+
+def analysis_of_weights():
+    print(model.state_dict())
+    weights_np = model.state_dict(OrderedDict(['linear.weight']))
+    print(weights_np)
+    eigvals, eigvecs = numpy.linalg.eig(weights)
+    print(eigvals.imag)
+    plt.title('Learned Weight Matrix Eigenvalues')
+    plt.xlabel('Real')
+    plt.ylabel('Imaginary')
+    plt.scatter(eigvals.real, eigvals.imag)
+    plt.savefig('eigenvalues_weights')
+
+analysis_of_weights()
 
 plt.show()
 
