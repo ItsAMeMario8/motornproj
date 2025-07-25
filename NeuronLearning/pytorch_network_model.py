@@ -194,9 +194,19 @@ tensor_plot()
 
 plt.show()
 
+def analysis_of_gru_weights():
+    od = model.state_dict()
+    #print(od)
+    rnn_tensor = od.pop('gru.weight_ih_l0')
+    rnn_tensor = rnn_tensor.numpy().reshape((12,8,8))
+    eigvals, eigvecs = np.linalg.eig(rnn_tensor)
+    plt.scatter(eigvals.real, eigvals.imag)
+
+analysis_of_gru_weights()
+
 def analysis_of_weights():
     od = model.state_dict()
-    print(od)
+    #print(od)
     wanted_tensor = od.pop('linear.weight')
     wanted_tensor = wanted_tensor.numpy().reshape((2,8,8))
     eigvals, eigvecs = np.linalg.eig(wanted_tensor)
