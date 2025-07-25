@@ -46,7 +46,7 @@ config = {
     'batch_size': 16,
     'seq_len': 100,
     'EPOCHS': 2000,
-    'hl_dim' : 5, #hidden layer dimention
+    'hl_dim' : 15, #hidden layer dimention
 }
 
 hidden_layer = config['hidden_layer']
