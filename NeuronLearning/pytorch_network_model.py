@@ -30,18 +30,18 @@ class RNNModel(nn.Module):
         super(RNNModel, self).__init__()
         self.hl_dim = hl_dim
         # LSTM & RNN compare for paper
-        self.gru = nn.GRU(input_dim, hidden_layer, hl_dim, batch_first=True)
+        self.lstm = nn.LSTM(input_dim, hidden_layer, hl_dim, batch_first=True)
         self.linear = nn.Linear(hidden_layer, output_dim)
     
     def forward(self, x):
-        out, hn = self.gru(x)
+        out, hn = self.lstm(x)
         v = self.linear(out) 
         return v, out
 
 modelpath = get_modelpath(task)
 config = {
     'dt': 100,
-    'hidden_layer':64,
+    'hidden_layer':81,
     'lr': 1e-3,
     'batch_size': 16,
     'seq_len': 100,
@@ -183,32 +183,21 @@ analysis_average_activity(activity, info, config)
 
 plt.show()
 
-def tensor_plot():
-    od = model.state_dict()
-    wanted_tensor = od.pop('linear.weight')
-    wanted_tensor = wanted_tensor.numpy()
-    plt.title('Weight Tensor Plotted')
-    plt.imshow(wanted_tensor)
-
-tensor_plot()
-
-plt.show()
-
-def analysis_of_gru_weights():
+def analysis_of_rnn_weights():
     od = model.state_dict()
     #print(od)
-    rnn_tensor = od.pop('gru.weight_ih_l0')
-    rnn_tensor = rnn_tensor.numpy().reshape((12,8,8))
+    rnn_tensor = od.pop('lstm.weight_ih_l0')
+    rnn_tensor = rnn_tensor.numpy().reshape((16,9,9))
     eigvals, eigvecs = np.linalg.eig(rnn_tensor)
     plt.scatter(eigvals.real, eigvals.imag)
 
-analysis_of_gru_weights()
+analysis_of_rnn_weights()
 
 def analysis_of_weights():
     od = model.state_dict()
     #print(od)
     wanted_tensor = od.pop('linear.weight')
-    wanted_tensor = wanted_tensor.numpy().reshape((2,8,8))
+    wanted_tensor = wanted_tensor.numpy().reshape((2,9,9))
     eigvals, eigvecs = np.linalg.eig(wanted_tensor)
     plt.title('Learned Weight Matrix Eigenvalues')
     plt.xlabel('Real')
