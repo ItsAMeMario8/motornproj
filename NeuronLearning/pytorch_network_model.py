@@ -94,7 +94,7 @@ for i in range (config['EPOCHS']):
     iteration_list.append(count)
     running_loss += loss.item()
     if count % 100 == 0:     
-        print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
+        #print('{:d} loss: {:0.5f}'.format(i+1, running_loss / 100))
         running_loss = 0.0
         torch.save(model.state_dict(), modelpath / 'model.pth')
 
@@ -161,7 +161,6 @@ with torch.no_grad():
         trial_info = env.trial
         trial_info.update({'correct': correct, 'choice': choice})
         info.loc[len(info)] = trial_info
-        #info = pd.concat([info, trial_info], ignore_index=True)
         
         activity.append(np.array(hidden)[:, 0, :])
  
@@ -182,16 +181,20 @@ def analysis_average_activity(activity, info, config):
 
 analysis_average_activity(activity, info, config)
 
+plt.show()
+
 def analysis_of_weights():
-    print(model.state_dict())
-    weights_np = model.state_dict(OrderedDict(['linear.weight']))
-    print(weights_np)
-    eigvals, eigvecs = numpy.linalg.eig(weights)
-    print(eigvals.imag)
+    od = model.state_dict()
+    wanted_tensor = od.pop('linear.weight')
+    wanted_tensor = wanted_tensor.numpy()
+    plt.imshow(wanted_tensor)
+    wanted_tensor = wanted_tensor.reshape((2,8,8))
+    eigvals, eigvecs = np.linalg.eig(wanted_tensor)
     plt.title('Learned Weight Matrix Eigenvalues')
     plt.xlabel('Real')
     plt.ylabel('Imaginary')
     plt.scatter(eigvals.real, eigvals.imag)
+    
     plt.savefig('eigenvalues_weights')
 
 analysis_of_weights()
